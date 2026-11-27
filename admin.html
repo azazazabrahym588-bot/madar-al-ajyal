@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المشرف | مدار الأجيال</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #0A2A6B; --secondary: #1EA7F0; --gold: #F2B21B; --bg: #F8FAFC; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: var(--bg); display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { width: 250px; background: var(--primary); color: white; padding: 20px 0; display: flex; flex-direction: column; }
+        .sidebar-logo { text-align: center; padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-logo h2 { font-size: 22px; }
+        .sidebar-logo p { font-size: 12px; color: var(--gold); margin-top: 5px; }
+        .nav-item { padding: 15px 20px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); }
+        
+        /* Main */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { color: var(--primary); font-size: 24px; }
+        .inst-info { background: white; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-weight: bold; }
+        
+        /* Forms & Tables */
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--primary); font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+        .btn { background: var(--secondary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: var(--primary); }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #eee; }
+        th { background: #f8fafc; color: var(--primary); font-weight: bold; }
+        
+        .message { padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 15px; display: none; font-weight: bold; }
+        .message.success { background: #dcfce7; color: #16a34a; display: block; }
+        .message.error { background: #fee2e2; color: #dc2626; display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <h2>مدار الأجيال</h2>
+            <p>لوحة المشرف / المدرس</p>
+        </div>
+        <div class="nav-item" onclick="window.location.href='dashboard.html'">🔙 العودة للرئيسية</div>
+        <div class="nav-item" onclick="logout()" style="margin-top: auto; color: #fca5a5;">🚪 تسجيل الخروج</div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>إدارة الطلاب والدرجات</h1>
+            <div class="inst-info" id="instName">جاري التحميل...</div>
+        </div>
+
+        <div id="messageBox" class="message"></div>
+
+        <!-- إضافة طالب جديد -->
+        <div class="card">
+            <h3>إضافة طالب جديد</h3>
+            <form id="addStudentForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>اسم الطالب</label>
+                        <input type="text" id="stdName" required placeholder="الاسم الثلاثي">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم ولي الأمر</label>
+                        <input type="text" id="stdPhone" required placeholder="مثال: 770000000">
+                    </div>
+                    <div class="form-group">
+                        <label>الصف الدراسي</label>
+                        <input type="text" id="stdGrade" required placeholder="مثال: الصف الأول">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button type="submit" class="btn" style="width: 100%;">إضافة الطالب</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- قائمة الطلاب -->
+        <div class="card">
+            <h3>قائمة الطلاب المسجلين</h3>
+            <table id="studentsTable">
+                <thead>
+                    <tr>
+                        <th>اسم الطالب</th>
+                        <th>الصف</th>
+                        <th>رقم ولي الأمر</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsBody">
+                    <!-- سيتم تعبئتها بالجافاسكريبت -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ ضع المفاتيح هنا
+        const supabaseUrl = 'https://xxvvgbjtwofabjeuqfjg.supabase.co' 
+        const supabaseAnonKey = 'sb_publishable_jr4Xk71vLgEGNq1FJrnl6g_xdF-JcaT' 
+        const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        let currentInstitutionId = null;
+        const msgBox = document.getElementById('messageBox');
+
+        // جلب بيانات المؤسسة الحالية
+        async function init() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { window.location.href = 'login.html'; return; }
+
+            const { data: profile } = await supabase.from('profiles').select('institution_id, institutions(name)').eq('id', user.id).single();
+            
+            if (profile && profile.institution_id) {
+                currentInstitutionId = profile.institution_id;
+                document.getElementById('instName').innerText = profile.institutions.name;
+                loadStudents();
+            } else {
+                alert("لم يتم العثور على مؤسسة مرتبطة بحسابك.");
+            }
+        }
+
+        // جلب الطلاب من قاعدة البيانات
+        async function loadStudents() {
+            const { data: students, error } = await supabase
+                .from('students')
+                .select('*')
+                .eq('institution_id', currentInstitutionId);
+
+            if (error) { console.error(error); return; }
+
+            const tbody = document.getElementById('studentsBody');
+            tbody.innerHTML = '';
+            
+            if(students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">لا يوجد طلاب مسجلين بعد.</td></tr>';
+                return;
+            }
+
+            students.forEach(std => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${std.full_name}</td>
+                        <td>${std.grade_level}</td>
+                        <td>${std.parent_phone}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // إضافة طالب جديد
+        document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentInstitutionId) return;
+
+            const name = document.getElementById('stdName').value;
+            const phone = document.getElementById('stdPhone').value;
+            const grade = document.getElementById('stdGrade').value;
+
+            const { error } = await supabase.from('students').insert([
+                { institution_id: currentInstitutionId, full_name: name, parent_phone: phone, grade_level: grade }
+            ]);
+
+            if (error) {
+                msgBox.className = 'message error';
+                msgBox.innerText = 'حدث خطأ: ' + error.message;
+            } else {
+                msgBox.className = 'message success';
+                msgBox.innerText = 'تمت إضافة الطالب بنجاح!';
+                document.getElementById('addStudentForm').reset();
+                loadStudents();
+                setTimeout(() => msgBox.style.display = 'none', 3000);
+            }
+        });
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        init();
+    </script>
+</body>
+</html>

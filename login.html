@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | مدار الأجيال</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #0A2A6B; --secondary: #1EA7F0; --bg: #F8FAFC; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border-top: 5px solid var(--primary); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h2 { color: var(--primary); font-size: 28px; margin-bottom: 5px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--primary); }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .form-group input:focus { border-color: var(--secondary); outline: none; }
+        .btn-submit { width: 100%; background: var(--secondary); color: white; padding: 14px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-submit:hover { background: var(--primary); }
+        .register-link { text-align: center; margin-top: 20px; font-size: 14px; }
+        .register-link a { color: var(--secondary); text-decoration: none; font-weight: bold; }
+        .message { padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; }
+        .message.error { background: #fee2e2; color: #dc2626; display: block; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="header">
+            <h2>مدار الأجيال</h2>
+            <p>تسجيل الدخول</p>
+        </div>
+        <div id="messageBox" class="message"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="email" required placeholder="example@domain.com">
+            </div>
+            <div class="form-group">
+                <label>كلمة المرور</label>
+                <input type="password" id="password" required placeholder="********">
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">دخول</button>
+        </form>
+        <div class="register-link">
+            ليس لديك حساب؟ <a href="register.html">تسجيل مؤسسة جديدة</a>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ ضع المفاتيح هنا
+        const supabaseUrl = 'https://xxvvgbjtwofabjeuqfjg.supabase.co"
+        const supabaseAnonKey = "sb_publishable_jr4Xk71vLgEGNq1FJrnl6g_xdF-JcaT"
+        const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        const form = document.getElementById('loginForm');
+        const msgBox = document.getElementById('messageBox');
+        const btn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btn.innerText = 'جاري الدخول...';
+            btn.disabled = true;
+            msgBox.style.display = 'none';
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // 1. تسجيل الدخول
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (authError) {
+                msgBox.className = 'message error';
+                msgBox.innerText = 'خطأ في الدخول: ' + authError.message;
+                btn.innerText = 'دخول';
+                btn.disabled = false;
+                return;
+            }
+
+            // 2. جلب دور المستخدم (Role)
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (profileError) {
+                msgBox.className = 'message error';
+                msgBox.innerText = 'حدث خطأ في جلب بيانات الحساب.';
+                return;
+            }
+
+            // 3. التوجيه بناءً على الدور
+            if (profile.role === 'owner') {
+                window.location.href = 'owner.html';
+            } else {
+                window.location.href = 'dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>
